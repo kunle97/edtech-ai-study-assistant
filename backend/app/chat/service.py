@@ -5,20 +5,35 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.auth.models import User
 from app.chat.models import ChatMessage, ChatSession, MessageRole, MessageStatus
+from app.events.service import CHAT_MESSAGE_QUEUED, add_outbox_event
 
 
 class ChatSessionNotFoundError(Exception):
     pass
 
 
-def create_session(db: Session, *, user: User, title: str | None) -> ChatSession:
-    session = ChatSession(user_id=user.id, title=title)
+def create_session(
+    db: Session,
+    *,
+    user: User,
+    title: str | None,
+) -> ChatSession:
+    session = ChatSession(
+        user_id=user.id,
+        title=title,
+    )
+
     db.add(session)
     db.flush()
+
     return session
 
 
-def list_user_sessions(db: Session, *, user_id: uuid.UUID) -> list[ChatSession]:
+def list_user_sessions(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+) -> list[ChatSession]:
     return list(
         db.scalars(
             select(ChatSession)
@@ -75,4 +90,17 @@ def queue_user_message(
 
     db.add(message)
     db.flush()
+
+    add_outbox_event(
+        db,
+        event_type=CHAT_MESSAGE_QUEUED,
+        aggregate_type="chat_message",
+        aggregate_id=message.id,
+        payload={
+            "message_id": str(message.id),
+            "session_id": str(session.id),
+            "user_id": str(user_id),
+        },
+    )
+
     return message

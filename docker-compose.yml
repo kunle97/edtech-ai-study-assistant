@@ -42,12 +42,10 @@ services:
       dockerfile: Dockerfile
     container_name: learnpath-api
     command: >
-      sh -c "
-      alembic upgrade head &&
+      sh -c "alembic upgrade head &&
       python -m uvicorn app.main:app
       --host 0.0.0.0
-      --port 8000
-      "
+      --port 8000"
     env_file:
       - .env
     environment:
@@ -73,6 +71,28 @@ services:
       worker
       --loglevel=info
       --pool=solo
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://learnpath:learnpath@postgres:5432/learnpath
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: learnpath-beat
+    command: >
+      python -m celery
+      -A app.worker.celery_app:celery_app
+      beat
+      --loglevel=info
     env_file:
       - .env
     environment:
