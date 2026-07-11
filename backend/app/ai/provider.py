@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class TemporaryAIError(Exception):
-    """Raised when the AI provider is temporarily unavailable."""
+    pass
 
 
 class AIProvider(ABC):
@@ -12,6 +12,7 @@ class AIProvider(ABC):
         *,
         message: str,
         conversation_history: list[dict[str, str]],
+        curriculum_context: list[dict[str, str]],
     ) -> str:
         raise NotImplementedError
 
@@ -22,16 +23,27 @@ class MockAIProvider(AIProvider):
         *,
         message: str,
         conversation_history: list[dict[str, str]],
+        curriculum_context: list[dict[str, str]],
     ) -> str:
-        normalized_message = message.strip()
+        if message.strip().lower() == "simulate-ai-failure":
+            raise TemporaryAIError(
+                "Mock AI provider is temporarily unavailable"
+            )
 
-        # Useful for manually testing retry behavior.
-        if normalized_message.lower() == "simulate-ai-failure":
-            raise TemporaryAIError("Mock AI provider is temporarily unavailable")
+        if not curriculum_context:
+            return (
+                "I could not find relevant curriculum content for that "
+                "question. Please ask your instructor for clarification."
+            )
+
+        context = "\n\n".join(
+            f"{item['topic']}: {item['body']}"
+            for item in curriculum_context
+        )
 
         return (
-            "Here is a study-focused response to your question: "
-            f"{normalized_message}"
+            f"Based on the curriculum:\n\n{context}\n\n"
+            f"Answer to your question: {message.strip()}"
         )
 
 

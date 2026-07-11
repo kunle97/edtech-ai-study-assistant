@@ -15,7 +15,7 @@ from app.chat.models import (
 )
 from app.db.session import SessionLocal
 from app.worker.celery_app import celery_app
-
+from app.ai.retrieval import retrieve_curriculum
 
 TERMINAL_STATUSES = {
     MessageStatus.COMPLETED,
@@ -100,9 +100,14 @@ def process_chat_message(
             ]
 
             provider = get_ai_provider()
+            curriculum_context = retrieve_curriculum(
+                db,
+                query=current_message.content,
+            )
             response_text = provider.generate_response(
                 message=current_message.content,
                 conversation_history=history,
+                curriculum_context=curriculum_context,
             )
 
         with SessionLocal() as db:
