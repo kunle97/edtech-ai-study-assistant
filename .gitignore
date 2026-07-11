@@ -13,6 +13,11 @@ __pycache__/
 htmlcov/
 .venv/
 backend/.venv/
+backend/celerybeat-schedule
+
+# Runtime uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # JavaScript
 node_modules/
