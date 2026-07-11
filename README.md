@@ -53,3 +53,31 @@ http://localhost:8000/docs
 
 Frontend:
 http://localhost:5173
+
+## Create an Administrator
+
+Public registration always creates student accounts. Create the initial
+administrator with the backend command:
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m app.scripts.create_admin --email admin@example.com
+```
+
+The password is entered securely through an interactive prompt.
+
+## Run Backend Tests
+
+PostgreSQL must be running:
+
+```bash
+docker compose up -d postgres
+
+cd backend
+source .venv/bin/activate
+pytest -v
+```
+
+Each API test runs inside a database transaction that is rolled back after
+the test.
