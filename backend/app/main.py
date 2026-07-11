@@ -1,10 +1,16 @@
 from fastapi import FastAPI
 
+from app.auth.router import router as auth_router
+from app.core.config import settings
+
+
 app = FastAPI(
-    title="LearnPath AI Study Assistant",
+    title=settings.app_name,
     version="0.1.0",
     description="AI-powered study assistant platform",
 )
+
+app.include_router(auth_router)
 
 
 @app.get("/health", tags=["Health"])
