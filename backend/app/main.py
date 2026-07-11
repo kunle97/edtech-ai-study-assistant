@@ -4,6 +4,7 @@ from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
 from app.chat.router import router as chat_router
 from app.core.config import settings
+from app.imports.router import router as imports_router
 
 
 app = FastAPI(
@@ -14,6 +15,7 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(imports_router)
 app.include_router(chat_router)
 
 

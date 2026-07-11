@@ -10,6 +10,7 @@ celery_app = Celery(
     include=[
         "app.worker.tasks",
         "app.events.tasks",
+        "app.imports.tasks",
     ],
 )
 
