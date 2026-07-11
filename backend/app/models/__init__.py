@@ -1,4 +1,4 @@
-# Import every SQLAlchemy model here so Alembic can discover it.
+from app.audit.models import AuditLog
 from app.auth.models import User
 
-__all__ = ["User"]
+__all__ = ["AuditLog", "User"]
