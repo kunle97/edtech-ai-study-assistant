@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.auth.dependencies import ActiveUser, DatabaseSession
 from app.auth.models import UserRole
+from app.chat.dispatcher import dispatch_chat_message
 from app.chat.schemas import (
     ChatMessageCreate,
     ChatMessageResponse,
@@ -131,7 +132,11 @@ def send_message(
             detail="Chat session not found",
         )
 
+    # Persist before attempting to contact Redis so the student message is
+    # never lost when the broker is temporarily unavailable.
     db.commit()
     db.refresh(message)
+
+    dispatch_chat_message(message.id)
 
     return ChatMessageResponse.model_validate(message)
