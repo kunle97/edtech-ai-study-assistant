@@ -2,9 +2,12 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from app.events.models import OutboxEvent
-from app.events.service import CHAT_MESSAGE_QUEUED
 from app.db.session import SessionLocal
+from app.events.models import OutboxEvent
+from app.events.service import (
+    CHAT_INTERACTION_COMPLETED,
+    CHAT_MESSAGE_QUEUED,
+)
 from app.worker.celery_app import celery_app
 
 
@@ -35,12 +38,26 @@ def publish_outbox_events() -> dict[str, int]:
 
             try:
                 if event.event_type == CHAT_MESSAGE_QUEUED:
-                    message_id = event.payload["message_id"]
-
                     celery_app.send_task(
                         "chat.process_message",
-                        args=[message_id],
+                        args=[event.payload["message_id"]],
                     )
+
+                elif event.event_type == CHAT_INTERACTION_COMPLETED:
+                    interaction_id = event.payload["interaction_id"]
+
+                    celery_app.send_task(
+                        "analytics.consume_chat_interaction",
+                        args=[interaction_id, event.payload],
+                        queue="analytics",
+                    )
+
+                    celery_app.send_task(
+                        "compliance.consume_chat_interaction",
+                        args=[interaction_id, event.payload],
+                        queue="compliance",
+                    )
+
                 else:
                     raise ValueError(
                         f"Unsupported outbox event: {event.event_type}"

@@ -16,6 +16,10 @@ from app.chat.models import (
 from app.db.session import SessionLocal
 from app.worker.celery_app import celery_app
 from app.ai.retrieval import retrieve_curriculum
+from app.events.service import (
+    CHAT_INTERACTION_COMPLETED,
+    add_outbox_event,
+)
 
 TERMINAL_STATUSES = {
     MessageStatus.COMPLETED,
@@ -142,6 +146,23 @@ def process_chat_message(
             )
 
             db.add(assistant_message)
+            db.flush()
+
+            add_outbox_event(
+                db,
+                event_type=CHAT_INTERACTION_COMPLETED,
+                aggregate_type="chat_interaction",
+                aggregate_id=message.id,
+                payload={
+                    "interaction_id": str(message.id),
+                    "session_id": str(message.session_id),
+                    "user_id": str(user.id),
+                    "user_message_id": str(message.id),
+                    "assistant_message_id": str(assistant_message.id),
+                    "user_message": message.content,
+                    "assistant_message": assistant_message.content,
+                },
+            )
             message.status = MessageStatus.COMPLETED
             message.error_message = None
             db.commit()

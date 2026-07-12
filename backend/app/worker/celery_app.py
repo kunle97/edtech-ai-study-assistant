@@ -1,4 +1,5 @@
 from celery import Celery
+from kombu import Queue
 
 from app.core.config import settings
 
@@ -11,6 +12,7 @@ celery_app = Celery(
         "app.worker.tasks",
         "app.events.tasks",
         "app.imports.tasks",
+        "app.consumers.tasks",
     ],
 )
 
@@ -25,6 +27,11 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
     broker_connection_retry_on_startup=True,
+    task_queues=(
+        Queue("celery"),
+        Queue("analytics"),
+        Queue("compliance"),
+    ),
     beat_schedule={
         "publish-pending-outbox-events": {
             "task": "events.publish_outbox",

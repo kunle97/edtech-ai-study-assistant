@@ -7,6 +7,7 @@ from app.events.models import OutboxEvent
 
 
 CHAT_MESSAGE_QUEUED = "chat.message.queued"
+CHAT_INTERACTION_COMPLETED = "chat.interaction.completed"
 
 
 def add_outbox_event(

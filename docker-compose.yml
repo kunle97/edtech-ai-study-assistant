@@ -74,6 +74,7 @@ services:
       worker
       --loglevel=info
       --pool=solo
+      --queues=celery,analytics,compliance
     env_file:
       - .env
     environment:
