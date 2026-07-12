@@ -56,7 +56,7 @@ The project demonstrates production-oriented backend architecture including asyn
 
 ---
 
-# Architecture
+<!-- # Architecture
 
 ```
                         React + TypeScript
@@ -94,8 +94,34 @@ Chat Completed Event
 -------------------------------
 |                             |
 Analytics Consumer      Compliance Consumer
-```
+``` --->
+## Architecture
 
+```mermaid
+flowchart TD
+    UI[React + TypeScript UI] --> API[FastAPI REST API]
+
+    API --> AUTH[Authentication and RBAC]
+    API --> DB[(PostgreSQL)]
+    API --> OUTBOX[Transactional Outbox]
+
+    API --> IMPORTS[Curriculum Import API]
+    IMPORTS --> UPLOADS[(Shared Upload Volume)]
+    IMPORTS --> REDIS[(Redis)]
+
+    OUTBOX --> BEAT[Celery Beat]
+    BEAT --> WORKER[Celery Worker]
+
+    WORKER --> DB
+    WORKER --> RETRIEVAL[Curriculum Retrieval]
+    RETRIEVAL --> DB
+
+    WORKER --> ANALYTICS[Analytics Consumer]
+    WORKER --> COMPLIANCE[Compliance Consumer]
+
+    ANALYTICS --> DB
+    COMPLIANCE --> DB
+```
 ---
 
 # Repository Structure
@@ -377,6 +403,18 @@ The retrieval pipeline:
 
 ---
 
+## Suggested Reviewer Questions
+
+After importing `sample-data/curriculum.jsonl`, try:
+
+- What is photosynthesis?
+- Explain Newton's first law.
+- What is the Pythagorean theorem?
+
+Questions outside the imported curriculum intentionally return a fallback response.
+
+---
+
 # Future Improvements
 
 Given additional time, I would implement:
@@ -395,18 +433,31 @@ Given additional time, I would implement:
 
 ---
 
-# Screenshots
+## Screenshots
 
-*(Add screenshots here before submission.)*
+### Login
 
-Suggested screenshots:
+![Login page](docs/screenshots/login.png)
 
-- Login page
-- Student dashboard
-- Chat conversation
-- Admin dashboard
-- Curriculum upload
-- Swagger API
+### Student Registration
+
+![Student registration](docs/screenshots/registration.png)
+
+### Curriculum-Grounded Chat
+
+![Student chat](docs/screenshots/student-chat.png)
+
+### Administration
+
+![Admin dashboard](docs/screenshots/admin-dashboard.png)
+
+### Curriculum Import
+
+![Curriculum import](docs/screenshots/admin-dashboard-imports.png)
+
+### Swagger API
+
+![Curriculum import](docs/screenshots/swagger-api.png)
 
 ---
 
