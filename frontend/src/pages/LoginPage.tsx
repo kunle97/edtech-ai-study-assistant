@@ -147,7 +147,7 @@ export function LoginPage() {
             boxShadow: "0 24px 80px rgba(36, 24, 66, 0.10)",
           }}
         >
-          <Stack spacing={1} mb={4}>
+          <Stack spacing={1} mb={2}>
             <Typography variant="h4">Welcome back</Typography>
             <Typography color="text.secondary">
               Sign in to continue to your study workspace.
