@@ -2,9 +2,15 @@
 
 An AI-powered study assistant that enables students to ask curriculum-grounded questions while providing administrators with tools to manage users, curriculum imports, and system activity.
 
-The project demonstrates production-oriented backend architecture including asynchronous processing, event-driven workflows, background jobs, and a Retrieval-Augmented Generation (RAG) pipeline.
-
 ---
+
+## Overview
+
+LearnPath was built to demonstrate production-oriented AI system design rather than simply exposing an LLM through an API.
+
+The project combines Retrieval-Augmented Generation (RAG), asynchronous background processing, event-driven architecture, and the Transactional Outbox Pattern to provide reliable, curriculum-grounded responses while remaining scalable and fault tolerant.
+
+The AI provider is intentionally abstracted behind an interface. The included implementation is deterministic so the application can run without external API keys, while making it straightforward to integrate providers such as OpenAI, Anthropic, Azure OpenAI, or Gemini.
 
 # Features
 
@@ -45,7 +51,7 @@ The project demonstrates production-oriented backend architecture including asyn
 |---------|------------|
 | Frontend | React, TypeScript, Material UI, Vite |
 | Backend | FastAPI, Python |
-| Database | PostgreSQL + pgvector |
+| Database | PostgreSQL (pgvector-enabled image) |
 | Queue | Redis |
 | Background Jobs | Celery |
 | ORM | SQLAlchemy |
@@ -122,6 +128,20 @@ flowchart TD
     ANALYTICS --> DB
     COMPLIANCE --> DB
 ```
+---
+
+## High-Level Request Flow
+
+1. An administrator uploads a curriculum JSONL file.
+2. The API stores the upload and creates an import job.
+3. Celery processes the curriculum asynchronously and stores valid records.
+4. A student submits a question through the Chat API.
+5. The message is persisted together with an Outbox event.
+6. Celery retrieves relevant curriculum using PostgreSQL Full-Text Search.
+7. The AI provider generates a curriculum-grounded response.
+8. A completed interaction event is published.
+9. Analytics and Compliance independently consume the event.
+
 ---
 
 # Repository Structure
@@ -249,6 +269,14 @@ You'll be prompted to securely enter the password.
 
 # Running Tests
 
+Start PostgreSQL first if it is not already running.
+
+```bash
+docker compose up -d postgres
+```
+
+Run backend tests.
+
 ```bash
 cd backend
 
@@ -257,7 +285,15 @@ source .venv/bin/activate
 pytest -v
 ```
 
-Current coverage includes:
+Build the frontend.
+
+```bash
+cd ../frontend
+
+npm run build
+```
+
+Current automated coverage includes:
 
 - Authentication
 - Registration
@@ -299,6 +335,8 @@ Authenticate.
 ---
 
 ## 4. Upload Sample Curriculum
+
+The sample file intentionally contains both valid and invalid records so reviewers can verify successful processing as well as quarantined-record handling.
 
 Use:
 
@@ -353,12 +391,22 @@ That event is independently consumed by:
 
 Verify using:
 
-```sql
-SELECT * FROM analytics_events;
+```bash
+docker exec learnpath-postgres \
+psql -U learnpath -d learnpath \
+-c "SELECT interaction_id, created_at FROM analytics_events ORDER BY created_at DESC LIMIT 5;"
+```
 
-SELECT * FROM compliance_events;
+```bash
+docker exec learnpath-postgres \
+psql -U learnpath -d learnpath \
+-c "SELECT interaction_id, created_at FROM compliance_events ORDER BY created_at DESC LIMIT 5;"
+```
 
-SELECT * FROM outbox_events;
+```bash
+docker exec learnpath-postgres \
+psql -U learnpath -d learnpath \
+-c "SELECT event_type, published_at, publish_attempts, last_error FROM outbox_events ORDER BY created_at DESC LIMIT 10;"
 ```
 
 ---
@@ -369,7 +417,7 @@ SELECT * FROM outbox_events;
 
 Student messages are queued using Celery to prevent long-running AI requests from blocking HTTP requests.
 
----
+
 
 ## Transactional Outbox Pattern
 
@@ -379,7 +427,7 @@ A background publisher reliably delivers these events to downstream consumers.
 
 This prevents lost events if the application crashes between committing the database transaction and publishing the event.
 
----
+
 
 ## Event-Driven Consumers
 
@@ -387,7 +435,7 @@ Analytics and Compliance are implemented as completely independent consumers.
 
 Each maintains its own persistence model and processes events idempotently.
 
----
+
 
 ## Curriculum Retrieval
 
@@ -395,11 +443,22 @@ Responses are grounded exclusively in uploaded curriculum.
 
 The retrieval pipeline:
 
-- Normalizes user questions
+- Normalizes the student's question
 - Removes instructional stop words
-- Uses PostgreSQL full-text search
-- Ranks matching curriculum records
-- Supplies context to the AI provider
+- Uses PostgreSQL Full-Text Search
+- Ranks matching curriculum
+- Supplies retrieved context to the AI provider
+
+PostgreSQL Full-Text Search was chosen because it is deterministic, lightweight, and requires no external embedding service.
+
+The application already uses a pgvector-enabled PostgreSQL image, making semantic embeddings a natural future enhancement without changing the persistence layer.
+
+---
+## AI Provider Abstraction
+
+The chat pipeline depends on an AI provider interface rather than a vendor-specific SDK.
+
+The included deterministic provider keeps the project fully self-contained while demonstrating how hosted LLMs could be integrated without modifying the chat workflow.
 
 ---
 
@@ -419,14 +478,13 @@ Questions outside the imported curriculum intentionally return a fallback respon
 
 Given additional time, I would implement:
 
-- Streaming AI responses
 - Semantic vector search with pgvector embeddings
+- Streaming AI responses
 - WebSocket chat updates
-- Role-based permissions beyond Admin/Student
-- Prometheus metrics
 - OpenTelemetry tracing
-- Kubernetes deployment
+- Prometheus metrics
 - CI/CD pipeline
+- Kubernetes deployment
 - Integration tests
 - Rate limiting
 - Distributed tracing
@@ -460,6 +518,10 @@ Given additional time, I would implement:
 ![Curriculum import](docs/screenshots/swagger-api.png)
 
 ---
+
+# Notes
+
+This project was built as a Senior Software Engineer take-home assignment with an emphasis on engineering judgment, production-oriented architecture, maintainability, and reviewer usability rather than maximizing feature count.
 
 # Author
 
