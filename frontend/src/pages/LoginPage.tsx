@@ -7,20 +7,39 @@ import {
   Button,
   CircularProgress,
   Container,
+  Link,
   Paper,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
-import { Navigate, useNavigate } from "react-router-dom";
+import {
+  Link as RouterLink,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 
+interface LoginLocationState {
+  registrationSuccess?: boolean;
+  registeredEmail?: string;
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, login } = useAuth();
 
-  const [email, setEmail] = useState("student@example.com");
+  const locationState = location.state as LoginLocationState | null;
+  const registrationSuccess =
+    locationState?.registrationSuccess === true;
+  const registeredEmail = locationState?.registeredEmail;
+
+  const [email, setEmail] = useState(
+    registeredEmail ?? "student@example.com",
+  );
   const [password, setPassword] = useState("StudyPass123!");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,7 +107,11 @@ export function LoginPage() {
         />
 
         <Stack spacing={4} sx={{ maxWidth: 600, zIndex: 1 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ alignItems: "center" }}
+          >
             <Box
               sx={{
                 width: 48,
@@ -102,6 +125,7 @@ export function LoginPage() {
             >
               <MenuBookRoundedIcon />
             </Box>
+
             <Typography variant="h5">LearnPath</Typography>
           </Stack>
 
@@ -122,9 +146,15 @@ export function LoginPage() {
             backed by approved learning content.
           </Typography>
 
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ alignItems: "center" }}
+          >
             <AutoAwesomeRoundedIcon />
-            <Typography>Personalized, curriculum-aware guidance</Typography>
+            <Typography>
+              Personalized, curriculum-aware guidance
+            </Typography>
           </Stack>
         </Stack>
       </Box>
@@ -147,12 +177,20 @@ export function LoginPage() {
             boxShadow: "0 24px 80px rgba(36, 24, 66, 0.10)",
           }}
         >
-          <Stack spacing={1} mb={2}>
+          <Stack spacing={1} sx={{ mb: 3 }}>
             <Typography variant="h4">Welcome back</Typography>
+
             <Typography color="text.secondary">
               Sign in to continue to your study workspace.
             </Typography>
           </Stack>
+
+          {registrationSuccess && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              Account created successfully. Sign in
+              {registeredEmail ? ` as ${registeredEmail}` : ""}.
+            </Alert>
+          )}
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -197,6 +235,24 @@ export function LoginPage() {
               </Button>
             </Stack>
           </Box>
+
+          <Typography
+            color="text.secondary"
+            sx={{
+              mt: 3,
+              textAlign: "center",
+            }}
+          >
+            New to LearnPath?{" "}
+            <Link
+              component={RouterLink}
+              to="/register"
+              underline="hover"
+              sx={{ fontWeight: 650 }}
+            >
+              Create an account
+            </Link>
+          </Typography>
         </Paper>
       </Container>
     </Box>
