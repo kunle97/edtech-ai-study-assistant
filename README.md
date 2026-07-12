@@ -1,228 +1,110 @@
 # LearnPath AI Study Assistant
 
-LearnPath is an AI-powered study assistant built for the Pearson Senior Software Engineer take-home assignment.
+An AI-powered study assistant that enables students to ask curriculum-grounded questions while providing administrators with tools to manage users, curriculum imports, and system activity.
 
-The application allows students to interact with an AI tutor through persistent chat sessions while giving administrators tools to manage users and maintain an immutable audit trail. AI requests are processed asynchronously to provide fast API responses and reliable background execution.
-
----
-
-# Technology Stack
-
-## Frontend
-
-- React
-- TypeScript
-- Vite
-
-## Backend
-
-- FastAPI
-- SQLAlchemy
-- Alembic
-- PostgreSQL
-- Redis
-- Celery
-
-## Infrastructure
-
-- Docker Compose
-- pgvector (planned for RAG)
-
----
-
-# Architecture
-
-```text
-                    React + TypeScript
-                            │
-                            ▼
-                  FastAPI REST API
-                            │
-        ┌───────────────────┴───────────────────┐
-        ▼                                       ▼
- PostgreSQL                                Redis Queue
-(users, chats, audit)                           │
-        ▲                                       ▼
-        └──────────── Celery Worker ────────────┘
-                            │
-                            ▼
-                   AI Provider Abstraction
-                     (Mock Provider Today)
-```
-
-### Responsibilities
-
-**FastAPI**
-
-- Authentication
-- Authorization
-- REST API
-- Validation
-- Request handling
-
-**PostgreSQL**
-
-- Users
-- Chat sessions
-- Chat messages
-- Audit logs
-
-**Redis**
-
-- Celery broker
-- Background job queue
-
-**Celery**
-
-- AI processing
-- Retries
-- Background execution
-
-**AI Provider**
-
-Currently uses a mock implementation to keep the project self-contained.
-
-The provider interface can later be replaced with:
-
-- OpenAI
-- Azure OpenAI
-- Anthropic
-- Gemini
-- Local LLMs
-
-without changing the application architecture.
+The project demonstrates production-oriented backend architecture including asynchronous processing, event-driven workflows, background jobs, and a Retrieval-Augmented Generation (RAG) pipeline.
 
 ---
 
 # Features
 
-## Authentication
+## Student
 
-- JWT authentication
-- Password hashing
-- Student registration
-- Login
-- Current user endpoint
-
-## Administration
-
-- Administrator accounts
-- Suspend users
-- Reinstate users
-- List users
-- Immutable audit logs
-
-## Chat
-
-- Persistent chat sessions
-- Persistent messages
-- Conversation history
+- Secure JWT authentication
+- Create multiple chat sessions
+- Curriculum-grounded AI responses
+- Persistent conversation history
 - Asynchronous AI processing
-- Automatic retries
+- Automatic retry for transient AI failures
 
-## Reliability
+## Administrator
 
-- Background AI processing
-- Retry handling
-- Message status tracking
-- Idempotent worker execution
+- Manage users
+- Suspend/unsuspend accounts
+- Upload curriculum
+- Background curriculum processing
+- Duplicate upload detection
+- Import history
+- Audit logging
 
----
+## Platform
 
-# Design Decisions
-
-## FastAPI
-
-FastAPI was selected because it provides:
-
-- excellent performance
-- automatic OpenAPI documentation
-- strong typing
-- simple dependency injection
-
----
-
-## PostgreSQL
-
-PostgreSQL stores:
-
-- users
-- conversations
-- audit logs
-
-A relational database is appropriate because these entities have strong
-relationships and transactional consistency requirements.
+- Event-driven architecture
+- Transactional Outbox Pattern
+- Celery background workers
+- Independent Analytics and Compliance consumers
+- Redis-backed task queue
+- PostgreSQL persistence
+- Dockerized development environment
 
 ---
 
-## Redis
+# Technology Stack
 
-Redis is used exclusively as the Celery broker.
-
-Using Redis allows AI requests to execute outside the request lifecycle.
-
----
-
-## Celery
-
-AI requests can take several seconds.
-
-Instead of blocking the HTTP request:
-
-1. the student message is stored
-2. the API immediately returns
-3. Celery processes the request
-4. the assistant response is persisted
-
-Benefits:
-
-- better responsiveness
-- retries
-- scalability
-- fault tolerance
+| Layer | Technology |
+|---------|------------|
+| Frontend | React, TypeScript, Material UI, Vite |
+| Backend | FastAPI, Python |
+| Database | PostgreSQL + pgvector |
+| Queue | Redis |
+| Background Jobs | Celery |
+| ORM | SQLAlchemy |
+| Migrations | Alembic |
+| Authentication | JWT |
+| Testing | Pytest |
+| Containerization | Docker Compose |
 
 ---
 
-## Audit Logs
+# Architecture
 
-Administrative actions create immutable audit records.
-
-Audit records are append-only and are never updated or deleted.
+```
+                        React + TypeScript
+                               |
+                               |
+                         FastAPI REST API
+                               |
+      ------------------------------------------------
+      |                     |                        |
+ Authentication        Curriculum Import         Chat API
+      |                     |                        |
+      |                     |                        |
+ PostgreSQL <--------- Import Jobs ---------- Chat Sessions
+      |
+      |
+ Transactional Outbox
+      |
+      |
+ Celery Beat
+      |
+      |
+ Publish Pending Events
+      |
+      |
+ Celery Worker
+      |
+      |-------------------------------|
+      |                               |
+Chat Processing                  Import Processing
+      |
+      |
+Chat Completed Event
+      |
+      |
+-------------------------------
+|                             |
+Analytics Consumer      Compliance Consumer
+```
 
 ---
 
-## AI Provider Abstraction
-
-The application never directly depends on a specific LLM.
-
-Instead it depends on an interface.
-
-Current implementation:
-
-- MockAIProvider
-
-Future implementations can include:
-
-- OpenAI
-- Azure OpenAI
-- Anthropic
-
-without modifying business logic.
-
----
-
-# Project Structure
+# Repository Structure
 
 ```
 backend/
     app/
-        admin/
-        ai/
-        audit/
-        auth/
-        chat/
-        worker/
     alembic/
+    tests/
 
 frontend/
     src/
@@ -231,57 +113,35 @@ docs/
     adr/
 
 sample-data/
-
-docker-compose.yml
 ```
 
 ---
 
 # Prerequisites
 
-- Docker Desktop
-- Python 3.12+
+- Python 3.11+
 - Node.js 22+
+- Docker Desktop
 
 ---
 
-# Quick Start (Recommended)
+# Running the Project
 
-Clone the repository
+Clone the repository.
 
-```bash
-git clone <repository-url>
-cd edtech-ai-study-assistant
-```
-
-Copy environment variables
+Copy the environment variables.
 
 ```bash
 cp .env.example .env
 ```
 
-Start everything
+Start infrastructure.
 
 ```bash
-docker compose up --build
-```
-
-This starts:
-
-- PostgreSQL
-- Redis
-- FastAPI
-- Celery Worker
-
-Swagger UI
-
-```
-http://localhost:8000/docs
+docker compose up -d
 ```
 
 ---
-
-# Local Development
 
 ## Backend
 
@@ -294,9 +154,13 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
-alembic upgrade head
+uvicorn app.main:app --reload
+```
 
-python -m uvicorn app.main:app --reload
+Swagger
+
+```
+http://localhost:8000/docs
 ```
 
 ---
@@ -311,37 +175,54 @@ npm install
 npm run dev
 ```
 
+Application
+
+```
+http://localhost:5173
+```
+
 ---
 
-# Create an Administrator
+# Docker Services
 
-Student registration is public.
+The application consists of five containers.
 
-Administrator accounts must be created manually.
+| Service | Purpose |
+|----------|----------|
+| postgres | PostgreSQL database |
+| redis | Redis task broker |
+| api | FastAPI application |
+| worker | Celery worker |
+| beat | Celery scheduler |
+
+Start everything.
+
+```bash
+docker compose up --build -d
+```
+
+---
+
+# Creating the Initial Administrator
+
+Public registration always creates student accounts.
+
+Create the first administrator using:
 
 ```bash
 cd backend
 
 source .venv/bin/activate
 
-python -m app.scripts.create_admin \
-    --email admin@example.com
+python -m app.scripts.create_admin --email admin@example.com
 ```
 
-The password is entered securely using an interactive prompt.
+You'll be prompted to securely enter the password.
 
 ---
 
 # Running Tests
 
-Start PostgreSQL
-
-```bash
-docker compose up -d postgres
-```
-
-Run tests
-
 ```bash
 cd backend
 
@@ -350,136 +231,185 @@ source .venv/bin/activate
 pytest -v
 ```
 
-Each test runs inside a transaction which is rolled back after completion.
+Current coverage includes:
+
+- Authentication
+- Registration
+- Login
+- Chat service
+- Retrieval pipeline
+- Curriculum search
 
 ---
 
-# API Documentation
+# Reviewer Walkthrough
 
-Swagger UI
+## 1. Start the application
+
+```bash
+docker compose up --build -d
+```
+
+---
+
+## 2. Create an administrator
+
+```bash
+python -m app.scripts.create_admin --email admin@example.com
+```
+
+---
+
+## 3. Login as Administrator
+
+Open Swagger.
 
 ```
 http://localhost:8000/docs
 ```
 
-OpenAPI JSON
+Authenticate.
+
+---
+
+## 4. Upload Sample Curriculum
+
+Use:
 
 ```
-http://localhost:8000/openapi.json
+sample-data/curriculum.jsonl
+```
+
+Wait a few seconds for the background import to complete.
+
+---
+
+## 5. Register a Student
+
+Use the Register endpoint or the frontend.
+
+---
+
+## 6. Login as Student
+
+Create a chat session.
+
+---
+
+## 7. Ask Questions
+
+The uploaded curriculum contains answers for questions such as:
+
+```
+What is photosynthesis?
+
+Explain Newton's first law.
+
+Summarize the French Revolution.
+
+What is the quadratic formula?
+
+Explain the water cycle.
+```
+
+Responses should be grounded in the uploaded curriculum.
+
+---
+
+## 8. Verify Event Processing (Optional)
+
+Each completed chat interaction produces an Outbox event.
+
+That event is independently consumed by:
+
+- Analytics Consumer
+- Compliance Consumer
+
+Verify using:
+
+```sql
+SELECT * FROM analytics_events;
+
+SELECT * FROM compliance_events;
+
+SELECT * FROM outbox_events;
 ```
 
 ---
 
-# Useful Commands
+# Key Design Decisions
 
-Start containers
+## Asynchronous Chat Processing
 
-```bash
-docker compose up --build
-```
-
-Stop containers
-
-```bash
-docker compose down
-```
-
-View logs
-
-```bash
-docker compose logs api
-
-docker compose logs worker
-```
-
-Run backend
-
-```bash
-python -m uvicorn app.main:app --reload
-```
-
-Run Celery
-
-```bash
-python -m celery \
--A app.worker.celery_app:celery_app \
-worker \
---loglevel=info
-```
-
-Run tests
-
-```bash
-pytest -v
-```
+Student messages are queued using Celery to prevent long-running AI requests from blocking HTTP requests.
 
 ---
 
-# Current Implementation
+## Transactional Outbox Pattern
 
-✅ JWT Authentication
+Chat completion events are first written to an Outbox table within the same database transaction.
 
-✅ Student Registration
+A background publisher reliably delivers these events to downstream consumers.
 
-✅ Login
+This prevents lost events if the application crashes between committing the database transaction and publishing the event.
 
-✅ Role-Based Authorization
+---
 
-✅ Administrator Accounts
+## Event-Driven Consumers
 
-✅ User Suspension
+Analytics and Compliance are implemented as completely independent consumers.
 
-✅ User Reinstatement
+Each maintains its own persistence model and processes events idempotently.
 
-✅ Immutable Audit Logs
+---
 
-✅ Persistent Chat Sessions
+## Curriculum Retrieval
 
-✅ Persistent Chat Messages
+Responses are grounded exclusively in uploaded curriculum.
 
-✅ Asynchronous AI Processing
+The retrieval pipeline:
 
-✅ Celery Worker
-
-✅ Retry Logic
-
-⬜ Curriculum Import
-
-⬜ Vector Embeddings
-
-⬜ Retrieval Augmented Generation (RAG)
-
-⬜ Streaming AI Responses
-
-⬜ React Study Interface
+- Normalizes user questions
+- Removes instructional stop words
+- Uses PostgreSQL full-text search
+- Ranks matching curriculum records
+- Supplies context to the AI provider
 
 ---
 
 # Future Improvements
 
-- pgvector semantic search
-- curriculum ingestion pipeline
-- Retrieval-Augmented Generation
-- streaming responses using Server-Sent Events
+Given additional time, I would implement:
+
+- Streaming AI responses
+- Semantic vector search with pgvector embeddings
+- WebSocket chat updates
+- Role-based permissions beyond Admin/Student
+- Prometheus metrics
 - OpenTelemetry tracing
-- rate limiting
-- distributed worker autoscaling
-- AI conversation summarization
-- conversation search
-- instructor analytics
+- Kubernetes deployment
+- CI/CD pipeline
+- Integration tests
+- Rate limiting
+- Distributed tracing
 
 ---
 
-# Why This Architecture?
+# Screenshots
 
-The primary design goal was separation of concerns.
+*(Add screenshots here before submission.)*
 
-- FastAPI is responsible for HTTP.
-- PostgreSQL is responsible for persistence.
-- Redis transports work.
-- Celery executes background jobs.
-- AI providers generate responses.
+Suggested screenshots:
 
-Because these responsibilities are isolated, individual components can evolve independently without affecting the rest of the system.
+- Login page
+- Student dashboard
+- Chat conversation
+- Admin dashboard
+- Curriculum upload
+- Swagger API
 
-This keeps the application maintainable, testable, and production-ready.
+---
+
+# Author
+
+Adekunle Ademefun
