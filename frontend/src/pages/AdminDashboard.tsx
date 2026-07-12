@@ -24,7 +24,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   IconButton,
   LinearProgress,
   Paper,
@@ -84,7 +83,7 @@ function importColor(
 }
 
 export function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState(0);
