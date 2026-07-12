@@ -20,3 +20,12 @@ class AdminUserResponse(BaseModel):
 class UserListResponse(BaseModel):
     users: list[AdminUserResponse]
     total: int
+
+
+class AdminChatSessionResponse(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    user_email: EmailStr
+    title: str | None
+    start_time: datetime
+    message_count: int

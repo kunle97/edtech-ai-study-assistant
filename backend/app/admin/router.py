@@ -4,10 +4,15 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
-from app.admin.schemas import AdminUserResponse, UserListResponse
+from app.admin.schemas import (
+    AdminChatSessionResponse,
+    AdminUserResponse,
+    UserListResponse,
+)
 from app.audit.service import record_audit_event
 from app.auth.dependencies import AdminUser, DatabaseSession
 from app.auth.models import User
+from app.chat.models import ChatMessage, ChatSession
 
 
 router = APIRouter(
@@ -33,9 +38,59 @@ def list_users(
     total = db.scalar(select(func.count()).select_from(User)) or 0
 
     return UserListResponse(
-        users=[AdminUserResponse.model_validate(user) for user in users],
+        users=[
+            AdminUserResponse.model_validate(user)
+            for user in users
+        ],
         total=total,
     )
+
+
+@router.get(
+    "/chat-sessions",
+    response_model=list[AdminChatSessionResponse],
+)
+def list_chat_sessions(
+    admin: AdminUser,
+    db: DatabaseSession,
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[AdminChatSessionResponse]:
+    rows = db.execute(
+        select(
+            ChatSession.id,
+            ChatSession.user_id,
+            User.email,
+            ChatSession.title,
+            ChatSession.created_at,
+            func.count(ChatMessage.id).label("message_count"),
+        )
+        .join(User, User.id == ChatSession.user_id)
+        .outerjoin(
+            ChatMessage,
+            ChatMessage.session_id == ChatSession.id,
+        )
+        .group_by(
+            ChatSession.id,
+            ChatSession.user_id,
+            User.email,
+            ChatSession.title,
+            ChatSession.created_at,
+        )
+        .order_by(ChatSession.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    return [
+        AdminChatSessionResponse(
+            id=row.id,
+            user_id=row.user_id,
+            user_email=row.email,
+            title=row.title,
+            start_time=row.created_at,
+            message_count=row.message_count,
+        )
+        for row in rows
+    ]
 
 
 @router.post(
